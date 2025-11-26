@@ -1,0 +1,33 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: enrollment-service
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:mysql://localhost:3306/enrollment_db?useSSL=false&serverTimezone=UTC
+    username: enrollment_user
+    password: enrollment_pass
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+# 课程目录服务地址配置
+catalog-service:
+  url: http://localhost:8081
+
+logging:
+  level:
+    com.zjgsu.wy.enrollment: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
