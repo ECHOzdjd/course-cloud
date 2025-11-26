@@ -445,12 +445,3 @@ public class EnrollmentService {
 **解决方案**:
 - MySQL 配置添加 `character-set-server=utf8mb4`
 - 配置 `collation-server=utf8mb4_unicode_ci`
-
-## 作者
-
-- **姓名**: 王颖
-- **学校**: 浙江工商大学
-
-## 许可证
-
-本项目仅供学习使用。
