@@ -8,7 +8,6 @@ import com.zjgsu.wy.enrollment.model.Student;
 import com.zjgsu.wy.enrollment.repository.EnrollmentRepository;
 import com.zjgsu.wy.enrollment.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
@@ -20,7 +19,7 @@ import java.util.Map;
 
 /**
  * 选课服务层
- * 实现学生选课管理，通过HTTP调用课程目录服务验证课程
+ * 实现学生选课管理,通过服务发现调用课程目录服务验证课程
  */
 @Service
 @Transactional(readOnly = true)
@@ -35,8 +34,8 @@ public class EnrollmentService {
     @Autowired
     private RestTemplate restTemplate;
     
-    @Value("${catalog-service.url}")
-    private String catalogServiceUrl;
+    // 使用服务名而非硬编码URL
+    private static final String CATALOG_SERVICE_NAME = "http://catalog-service";
 
     /**
      * 查询所有选课记录
@@ -55,7 +54,7 @@ public class EnrollmentService {
 
     /**
      * 学生选课
-     * 通过HTTP调用课程目录服务验证课程存在性
+     * 通过服务发现调用课程目录服务验证课程存在性
      */
     @Transactional
     @SuppressWarnings("unchecked")
@@ -64,8 +63,8 @@ public class EnrollmentService {
         Student student = studentRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
         
-        // 2. 调用课程目录服务验证课程是否存在
-        String url = catalogServiceUrl + "/api/courses/" + courseId;
+        // 2. 调用课程目录服务验证课程是否存在(使用服务名)
+        String url = CATALOG_SERVICE_NAME + "/api/courses/" + courseId;
         Map<String, Object> courseResponse;
         try {
             courseResponse = restTemplate.getForObject(url, Map.class);
@@ -117,7 +116,7 @@ public class EnrollmentService {
      * 更新课程的已选人数
      */
     private void updateCourseEnrolledCount(String courseId, int newCount) {
-        String url = catalogServiceUrl + "/api/courses/" + courseId;
+        String url = CATALOG_SERVICE_NAME + "/api/courses/" + courseId;
         Map<String, Object> updateData = Map.of("enrolled", newCount);
         try {
             restTemplate.put(url, updateData);
@@ -148,7 +147,7 @@ public class EnrollmentService {
         
         // 获取当前课程的已选人数并减1
         try {
-            String url = catalogServiceUrl + "/api/courses/" + courseId;
+            String url = CATALOG_SERVICE_NAME + "/api/courses/" + courseId;
             Map<String, Object> courseResponse = restTemplate.getForObject(url, Map.class);
             if (courseResponse != null) {
                 Map<String, Object> courseData = (Map<String, Object>) courseResponse.get("data");

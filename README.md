@@ -23,11 +23,19 @@
     ┌───────────────────────────────┐               ┌───────────────────────────────┐
     │   catalog-service (8081)      │               │  enrollment-service (8082)    │
     │                               │◄──────────────│                               │
-    │   └── 课程管理                │   HTTP调用    │   ├── 学生管理                │
-    │       ├── Course              │  (验证课程)   │   │   └── Student             │
+    │   └── 课程管理                │  服务发现调用  │   ├── 学生管理                │
+    │       ├── Course              │               │   │   └── Student             │
     │       ├── Instructor          │               │   └── 选课管理                │
     │       └── ScheduleSlot        │               │       └── Enrollment          │
     └───────────────────────────────┘               └───────────────────────────────┘
+                    │                                               │
+                    │ 服务注册                                       │ 服务注册
+                    └───────────────────┐   ┌───────────────────────┘
+                                        ▼   ▼
+                            ┌───────────────────────────┐
+                            │   Nacos Server (8848)     │
+                            │   服务注册与发现中心       │
+                            └───────────────────────────┘
                     │                                               │
                     ▼                                               ▼
     ┌───────────────────────────────┐               ┌───────────────────────────────┐
@@ -41,6 +49,9 @@
 | 技术 | 版本 | 说明 |
 |------|------|------|
 | Spring Boot | 3.2.0 | 微服务框架 |
+| Spring Cloud | 2023.0.0 | 微服务生态 |
+| Spring Cloud Alibaba | 2022.0.0.0 | Nacos 集成 |
+| Nacos | 3.1.0 | 服务注册与发现 |
 | Java | 17 | 编程语言 |
 | MySQL | 8.4 | 数据库 |
 | Docker | 20.10+ | 容器化 |
@@ -292,7 +303,109 @@ POST /api/enrollments
 | catalog-service | `http://localhost:8081/actuator/health` |
 | enrollment-service | `http://localhost:8082/actuator/health` |
 
+## Nacos 服务注册与发现
+
+### Nacos 简介
+
+本项目使用 Nacos 作为服务注册与发现中心,实现微服务之间的动态服务发现和负载均衡。
+
+### Nacos 控制台
+
+- **访问地址**: http://localhost:8849
+- **用户名**: nacos
+- **密码**: nacos
+
+### Nacos 配置说明
+
+各服务在 `application.yml` 中配置 Nacos 注册信息:
+
+```yaml
+spring:
+  application:
+    name: catalog-service  # 服务名
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}  # Nacos 服务器地址
+        namespace: dev  # 命名空间,用于环境隔离
+        group: COURSEHUB_GROUP  # 分组,用于业务隔离
+        ephemeral: true  # 临时实例,断开连接后自动注销
+        heart-beat-interval: 5000  # 心跳间隔 (ms)
+        heart-beat-timeout: 15000  # 心跳超时 (ms)
+        metadata:
+          version: 1.0.0  # 自定义元数据
+          region: default
+```
+
+### 服务发现调用
+
+enrollment-service 通过服务名调用 catalog-service:
+
+```java
+@SpringBootApplication
+@EnableDiscoveryClient  // 启用服务发现
+public class EnrollmentServiceApplication {
+    
+    @Bean
+    @LoadBalanced  // 启用负载均衡
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}
+
+@Service
+public class EnrollmentService {
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    // 使用服务名而非硬编码 URL
+    private static final String CATALOG_SERVICE_NAME = "http://catalog-service";
+    
+    public Enrollment enroll(String courseId, String studentId) {
+        // 通过服务名调用,自动实现服务发现和负载均衡
+        String url = CATALOG_SERVICE_NAME + "/api/courses/" + courseId;
+        Map<String, Object> courseResponse = restTemplate.getForObject(url, Map.class);
+        // ... 业务逻辑
+    }
+}
+```
+
+### 服务注册验证
+
+1. 启动所有服务后,访问 Nacos 控制台: http://localhost:8849
+2. 登录后进入"服务管理" -> "服务列表"
+3. 确认以下服务已注册:
+   - `catalog-service` (COURSEHUB_GROUP)
+   - `enrollment-service` (COURSEHUB_GROUP)
+4. 点击"详情"查看服务实例的 IP、端口、健康状态等信息
+
+### 命名空间和分组
+
+- **命名空间 (Namespace)**: `dev` - 用于环境隔离 (dev/test/prod)
+- **分组 (Group)**: `COURSEHUB_GROUP` - 用于业务隔离
+
+### 负载均衡测试接口
+
+- **Catalog Service**: `GET http://localhost:8081/api/courses/health`
+- **Enrollment Service**: `GET http://localhost:8082/api/enrollments/test`
+
+这些接口会返回当前服务实例的端口号,用于验证负载均衡是否生效。
+
 ## 测试说明
+
+### Nacos 服务发现测试
+
+```bash
+# 运行 Nacos 测试脚本
+chmod +x scripts/nacos-test.sh
+./scripts/nacos-test.sh
+```
+
+该脚本会:
+1. 启动所有服务 (包括 Nacos)
+2. 检查服务注册情况
+3. 测试服务间调用 (enrollment-service 调用 catalog-service)
+4. 验证负载均衡效果
 
 ### 运行测试脚本
 
@@ -344,7 +457,28 @@ curl http://localhost:8082/api/enrollments
 
 ## 服务间通信
 
-enrollment-service 通过 RestTemplate 调用 catalog-service 来验证课程是否存在：
+### 服务发现机制
+
+本项目使用 Nacos 实现服务注册与发现,服务间通过服务名进行调用:
+
+**传统方式** (硬编码 URL):
+```java
+String url = "http://localhost:8081/api/courses/" + courseId;
+```
+
+**服务发现方式** (动态服务名):
+```java
+String url = "http://catalog-service/api/courses/" + courseId;
+```
+
+### 工作流程
+
+1. **服务注册**: catalog-service 和 enrollment-service 启动时自动注册到 Nacos
+2. **服务发现**: enrollment-service 通过服务名 `catalog-service` 从 Nacos 获取实例列表
+3. **负载均衡**: RestTemplate 结合 @LoadBalanced 自动实现客户端负载均衡
+4. **健康检查**: Nacos 定期检查服务健康状态,自动剔除不健康实例
+
+### 代码示例
 
 ```java
 @Service
@@ -352,12 +486,11 @@ public class EnrollmentService {
     @Autowired
     private RestTemplate restTemplate;
     
-    @Value("${catalog-service.url}")
-    private String catalogServiceUrl;
+    private static final String CATALOG_SERVICE_NAME = "http://catalog-service";
     
     public Enrollment enroll(String courseId, String studentId) {
-        // 调用 catalog-service 验证课程
-        String url = catalogServiceUrl + "/api/courses/" + courseId;
+        // 调用 catalog-service 验证课程 (通过服务名自动发现)
+        String url = CATALOG_SERVICE_NAME + "/api/courses/" + courseId;
         Map<String, Object> courseResponse = restTemplate.getForObject(url, Map.class);
         // ... 业务逻辑
     }

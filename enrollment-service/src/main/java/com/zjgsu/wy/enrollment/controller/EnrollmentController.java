@@ -4,10 +4,13 @@ import com.zjgsu.wy.enrollment.common.ApiResponse;
 import com.zjgsu.wy.enrollment.model.Enrollment;
 import com.zjgsu.wy.enrollment.service.EnrollmentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +24,35 @@ public class EnrollmentController {
     
     @Autowired
     private EnrollmentService enrollmentService;
+    
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    @Value("${server.port}")
+    private String serverPort;
+
+    /**
+     * 测试接口,通过服务发现调用 catalog-service
+     * GET /api/enrollments/test
+     */
+    @GetMapping("/test")
+    public ResponseEntity<Map<String, Object>> testServiceDiscovery() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("enrollment-service-port", serverPort);
+        
+        try {
+            // 通过服务名调用 catalog-service
+            String url = "http://catalog-service/api/courses/health";
+            Map<String, Object> catalogHealth = restTemplate.getForObject(url, Map.class);
+            result.put("catalog-service-response", catalogHealth);
+            result.put("status", "SUCCESS");
+        } catch (Exception e) {
+            result.put("status", "ERROR");
+            result.put("error", e.getMessage());
+        }
+        
+        return ResponseEntity.ok(result);
+    }
 
     /**
      * 查询所有选课记录

@@ -5,10 +5,12 @@ import com.zjgsu.wy.catalog.model.Course;
 import com.zjgsu.wy.catalog.service.CourseService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +24,23 @@ public class CourseController {
     
     @Autowired
     private CourseService courseService;
+    
+    @Value("${server.port}")
+    private String serverPort;
+
+    /**
+     * 健康检查接口,返回服务端口号用于负载均衡测试
+     * GET /api/courses/health
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        Map<String, Object> health = new HashMap<>();
+        health.put("status", "UP");
+        health.put("service", "catalog-service");
+        health.put("port", serverPort);
+        health.put("timestamp", System.currentTimeMillis());
+        return ResponseEntity.ok(health);
+    }
 
     /**
      * 查询所有课程
