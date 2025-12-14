@@ -93,23 +93,82 @@ services:
       retries: 5
       start_period: 30s
 
-  # 课程目录服务
-  catalog-service:
+  # 课程目录服务 - 实例 1
+  catalog-service-1:
     build:
       context: ./catalog-service
       dockerfile: Dockerfile
     image: catalog-service:1.0.0
-    container_name: catalog-service
+    container_name: catalog-service-1
     restart: unless-stopped
     environment:
+      SERVER_PORT: 8081
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:mysql://catalog-db:3306/catalog_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       DB_USERNAME: catalog_user
       DB_PASSWORD: catalog_pass
       NACOS_SERVER_ADDR: nacos:8848
       TZ: Asia/Shanghai
-    ports:
-      - "8081:8081"
+    depends_on:
+      nacos:
+        condition: service_healthy
+      catalog-db:
+        condition: service_healthy
+    networks:
+      - course-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # 课程目录服务 - 实例 2
+  catalog-service-2:
+    build:
+      context: ./catalog-service
+      dockerfile: Dockerfile
+    image: catalog-service:1.0.0
+    container_name: catalog-service-2
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8081
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://catalog-db:3306/catalog_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USERNAME: catalog_user
+      DB_PASSWORD: catalog_pass
+      NACOS_SERVER_ADDR: nacos:8848
+      TZ: Asia/Shanghai
+    depends_on:
+      nacos:
+        condition: service_healthy
+      catalog-db:
+        condition: service_healthy
+    networks:
+      - course-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # 课程目录服务 - 实例 3
+  catalog-service-3:
+    build:
+      context: ./catalog-service
+      dockerfile: Dockerfile
+    image: catalog-service:1.0.0
+    container_name: catalog-service-3
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8081
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://catalog-db:3306/catalog_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USERNAME: catalog_user
+      DB_PASSWORD: catalog_pass
+      NACOS_SERVER_ADDR: nacos:8848
+      TZ: Asia/Shanghai
     depends_on:
       nacos:
         condition: service_healthy
@@ -133,6 +192,7 @@ services:
     container_name: enrollment-service
     restart: unless-stopped
     environment:
+      SERVER_PORT: 8082
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:mysql://enrollment-db:3306/enrollment_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       DB_USERNAME: enrollment_user
@@ -140,13 +200,17 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       TZ: Asia/Shanghai
     ports:
-      - "8082:8082"
+      - "8083:8082"
     depends_on:
       nacos:
         condition: service_healthy
       enrollment-db:
         condition: service_healthy
-      catalog-service:
+      catalog-service-1:
+        condition: service_started
+      catalog-service-2:
+        condition: service_started
+      catalog-service-3:
         condition: service_started
     networks:
       - course-network

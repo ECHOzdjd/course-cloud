@@ -4,6 +4,7 @@ import com.zjgsu.wy.catalog.common.ApiResponse;
 import com.zjgsu.wy.catalog.model.Course;
 import com.zjgsu.wy.catalog.service.CourseService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/courses")
 @CrossOrigin(origins = "*")
+@Slf4j
 public class CourseController {
     
     @Autowired
@@ -39,6 +41,7 @@ public class CourseController {
         health.put("service", "catalog-service");
         health.put("port", serverPort);
         health.put("timestamp", System.currentTimeMillis());
+        log.info("[catalog-service:{}] Health check 请求", serverPort);
         return ResponseEntity.ok(health);
     }
 
@@ -48,6 +51,7 @@ public class CourseController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<Course>>> getAllCourses() {
+        log.info("[catalog-service:{}] 查询所有课程", serverPort);
         List<Course> courses = courseService.findAll();
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
@@ -58,6 +62,7 @@ public class CourseController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Course>> getCourseById(@PathVariable String id) {
+        log.info("[catalog-service:{}] 查询课程 ID: {}", serverPort, id);
         Course course = courseService.findById(id);
         return ResponseEntity.ok(ApiResponse.success(course));
     }
@@ -68,6 +73,7 @@ public class CourseController {
      */
     @GetMapping("/code/{code}")
     public ResponseEntity<ApiResponse<Course>> getCourseByCode(@PathVariable String code) {
+        log.info("[catalog-service:{}] 查询课程代码: {}", serverPort, code);
         Course course = courseService.findByCode(code);
         return ResponseEntity.ok(ApiResponse.success(course));
     }
@@ -78,6 +84,7 @@ public class CourseController {
      */
     @PostMapping
     public ResponseEntity<ApiResponse<Course>> createCourse(@Valid @RequestBody Course course) {
+        log.info("[catalog-service:{}] 创建课程: {}", serverPort, course.getName());
         Course createdCourse = courseService.create(course);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("课程创建成功", createdCourse));
@@ -91,6 +98,7 @@ public class CourseController {
     public ResponseEntity<ApiResponse<Course>> updateCourse(
             @PathVariable String id, 
             @RequestBody Map<String, Object> updateData) {
+        log.info("[catalog-service:{}] 更新课程 ID: {}", serverPort, id);
         // 支持部分更新（用于更新enrolled字段）
         if (updateData.containsKey("enrolled") && updateData.size() == 1) {
             Integer enrolled = (Integer) updateData.get("enrolled");

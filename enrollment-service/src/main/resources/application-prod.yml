@@ -30,3 +30,5 @@ logging:
   level:
     org.hibernate.SQL: WARN
     com.zjgsu.wy.enrollment: INFO
+    com.zjgsu.wy.enrollment.client: INFO
+    feign: INFO

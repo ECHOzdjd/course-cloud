@@ -35,15 +35,80 @@ spring:
       ddl-auto: update
     show-sql: true
 
+# Feign 配置
+feign:
+  circuitbreaker:
+    enabled: true  # 启用熔断器
+  client:
+    config:
+      default:
+        connectTimeout: 3000  # 连接超时 3 秒
+        readTimeout: 5000     # 读取超时 5 秒
+        loggerLevel: BASIC    # 日志级别
+      catalog-service:
+        connectTimeout: 3000
+        readTimeout: 5000
+      user-service:
+        connectTimeout: 3000
+        readTimeout: 5000
+  compression:
+    request:
+      enabled: true
+      mime-types: text/xml,application/xml,application/json
+      min-request-size: 2048
+    response:
+      enabled: true
+
+# Resilience4j 熔断器配置
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowType: COUNT_BASED  # 基于计数的滑动窗口
+        slidingWindowSize: 10           # 滑动窗口大小 10 次调用
+        minimumNumberOfCalls: 5         # 最少调用次数
+        failureRateThreshold: 50        # 失败率阈值 50%
+        waitDurationInOpenState: 10000  # 熔断器打开后等待时间 10 秒
+        permittedNumberOfCallsInHalfOpenState: 3  # 半开状态允许的调用次数
+        automaticTransitionFromOpenToHalfOpenEnabled: true  # 自动从打开到半开
+        recordExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - feign.FeignException
+    instances:
+      catalog-service:
+        baseConfig: default
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+      user-service:
+        baseConfig: default
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s  # 超时时间 5 秒
+    instances:
+      catalog-service:
+        baseConfig: default
+      user-service:
+        baseConfig: default
+
 logging:
   level:
     com.zjgsu.wy.enrollment: DEBUG
+    com.zjgsu.wy.enrollment.client: DEBUG
+    feign: DEBUG
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,nacos-discovery
+        include: health,info,nacos-discovery,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
