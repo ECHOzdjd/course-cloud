@@ -1,0 +1,53 @@
+server:
+  port: ${SERVER_PORT:8084}
+
+spring:
+  application:
+    name: user-service
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+      username: nacos
+      password: nacos
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: dev
+        group: COURSEHUB_GROUP
+        ephemeral: true
+        heart-beat-interval: 5000
+        heart-beat-timeout: 15000
+        metadata:
+          version: 2.0.0
+          region: default
+        username: nacos
+        password: nacos
+        enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/user_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:user_user}
+    password: ${DB_PASSWORD:user_pass}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+jwt:
+  secret: courseCloudSecretKeyForJWTTokenGenerationMustBe256BitsOrMoreForHS512Algorithm
+  expiration: 86400000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.zjgsu.wy.user: INFO

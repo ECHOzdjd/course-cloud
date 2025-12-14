@@ -1,0 +1,80 @@
+server:
+  port: ${SERVER_PORT:8090}
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+      username: nacos
+      password: nacos
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: dev
+        group: COURSEHUB_GROUP
+        ephemeral: true
+        heart-beat-interval: 5000
+        heart-beat-timeout: 15000
+        metadata:
+          version: 2.0.0
+          region: default
+        username: nacos
+        password: nacos
+        enabled: true
+    gateway:
+      routes:
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=0
+        - id: catalog-service
+          uri: lb://catalog-service
+          predicates:
+            - Path=/api/courses/**
+          filters:
+            - StripPrefix=0
+        - id: enrollment-service
+          uri: lb://enrollment-service
+          predicates:
+            - Path=/api/enrollments/**, /api/students/**
+          filters:
+            - StripPrefix=0
+        - id: auth-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+jwt:
+  secret: courseCloudSecretKeyForJWTTokenGenerationMustBe256BitsOrMoreForHS512Algorithm
+  expiration: 86400000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.zjgsu.wy.gateway: INFO
